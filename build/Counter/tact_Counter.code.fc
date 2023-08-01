@@ -1,0 +1,152 @@
+#pragma version =0.4.3;
+#pragma allow-post-modification;
+#pragma compute-asm-ltr;
+
+#include "tact_Counter.headers.fc";
+#include "tact_Counter.stdlib.fc";
+#include "tact_Counter.storage.fc";
+
+;;
+;; Contract Counter functions
+;;
+
+(int, int) $Counter$_contract_init(int $id) impure inline_ref {
+    var (($self'id, $self'counter)) = (null(), null());
+    $self'id = $id;
+    $self'counter = 0;
+    return ($self'id, $self'counter);
+}
+
+((int, int), int) $Counter$_fun_counter((int, int) $self) impure inline_ref {
+    var (($self'id, $self'counter)) = $self;
+    return (($self'id, $self'counter), $self'counter);
+}
+
+((int, int), int) $Counter$_fun_id((int, int) $self) impure inline_ref {
+    var (($self'id, $self'counter)) = $self;
+    return (($self'id, $self'counter), $self'id);
+}
+
+;;
+;; Receivers of a Contract Counter
+;;
+
+((int, int), ()) $Counter$_internal_text_c4f8d72312edfdef5b7bec7833bdbb162d1511bd78a912aed0f2637af65572ae((int, int) $self) impure inline {
+    var ($self'id, $self'counter) = $self;
+    $self'counter = ($self'counter + 1);
+    ($self'id, $self'counter)~$Counter$_fun_reply($CounterValue$_store_cell($CounterValue$_constructor_amount($self'counter)));
+    return (($self'id, $self'counter), ());
+}
+
+((int, int), ()) $Counter$_internal_text_16678fa1858bdf8e1aad796f4c9d0b5712fc09179ff87801e763a4dd4adcf710((int, int) $self) impure inline {
+    var ($self'id, $self'counter) = $self;
+    ($self'id, $self'counter)~$Counter$_fun_reply($CounterValue$_store_cell($CounterValue$_constructor_amount($self'counter)));
+    return (($self'id, $self'counter), ());
+}
+
+(((int, int)), ()) $Counter$_internal_binary_Deploy((int, int) $self, (int) $deploy) impure inline {
+    var ($self'id, $self'counter) = $self;
+    var ($deploy'queryId) = $deploy;
+    ($self'id, $self'counter)~$Counter$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId)));
+    return (($self'id, $self'counter), ());
+}
+
+;;
+;; Get methods of a Contract Counter
+;;
+
+_ %counter() method_id(104984) {
+    var self = $Counter$_contract_load();
+    var res = self~$Counter$_fun_counter();
+    return res;
+}
+
+_ %id() method_id(105872) {
+    var self = $Counter$_contract_load();
+    var res = self~$Counter$_fun_id();
+    return res;
+}
+
+_ supported_interfaces() method_id {
+    return (
+        "org.ton.introspection.v0"H >> 128,
+        "org.ton.abi.ipfs.v0"H >> 128,
+        "org.ton.deploy.lazy.v0"H >> 128,
+        "org.ton.chain.workchain.v0"H >> 128
+    );
+}
+
+_ get_abi_ipfs() method_id {
+    return "ipfs://QmVhaZsWGvfUQpfXkyExuRJRZceVCVesNxo25GJBcxcNZ1";
+}
+
+_ lazy_deployment_completed() method_id {
+    return get_data().begin_parse().load_int(1);
+}
+
+;;
+;; Routing of a Contract Counter
+;;
+
+((int, int), int) $Counter$_contract_router_internal((int, int) self, int msg_bounced, slice in_msg) impure inline_ref {
+    ;; Handle bounced messages
+    if (msg_bounced) {
+        return (self, true);
+    }
+    
+    ;; Parse incoming message
+    int op = 0;
+    if (slice_bits(in_msg) >= 32) {
+        op = in_msg.preload_uint(32);
+    }
+    
+    
+    ;; Receive Deploy message
+    if (op == 2490013878) {
+        var msg = in_msg~$Deploy$_load();
+        self~$Counter$_internal_binary_Deploy(msg);
+        return (self, true);
+    }
+    
+    ;; Text Receivers
+    if (op == 0) {
+        var text_op = slice_hash(in_msg);
+        
+        ;; Receive "increment" message
+        if (text_op == 0xc4f8d72312edfdef5b7bec7833bdbb162d1511bd78a912aed0f2637af65572ae) {
+            self~$Counter$_internal_text_c4f8d72312edfdef5b7bec7833bdbb162d1511bd78a912aed0f2637af65572ae();
+            return (self, true);
+        }
+        
+        ;; Receive "query" message
+        if (text_op == 0x16678fa1858bdf8e1aad796f4c9d0b5712fc09179ff87801e763a4dd4adcf710) {
+            self~$Counter$_internal_text_16678fa1858bdf8e1aad796f4c9d0b5712fc09179ff87801e763a4dd4adcf710();
+            return (self, true);
+        }
+    }
+    
+    return (self, false);
+}
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+    
+    ;; Context
+    var cs = in_msg_cell.begin_parse();
+    var msg_flags = cs~load_uint(4);
+    var msg_bounced = -(msg_flags & 1);
+    slice msg_sender_addr = __tact_verify_address(cs~load_msg_addr());
+    __tact_context = (msg_bounced, msg_sender_addr, msg_value, cs);
+    __tact_context_sender = msg_sender_addr;
+    
+    ;; Load contract data
+    var self = $Counter$_contract_load();
+    
+    ;; Handle operation
+    int handled = self~$Counter$_contract_router_internal(msg_bounced, in_msg);
+    
+    ;; Throw if not handled
+    throw_unless(130, handled);
+    
+    ;; Persist state
+    $Counter$_contract_store(self);
+}

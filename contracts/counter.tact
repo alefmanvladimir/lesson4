@@ -7,27 +7,21 @@ message CounterValue {
 contract Counter with Deployable {
     id: Int as uint32;
     counter: Int as uint32;
-    flag: Bool;
 
     init(id: Int) {
         self.id = id;
         self.counter = 0;
-        self.flag = false;
     }
 
+    // step 4
     receive("increment") {
-        self.counter = self.counter + 1;
-        // emit("increment".asComment());
+        self.counter = (self.counter + 1);
         self.reply(CounterValue{amount: self.counter}.toCell());
     }
 
+    // step 2
     receive("query") {
-        // emit("query".asComment());
         self.reply(CounterValue{amount: self.counter}.toCell());
-    }
-
-    bounced(src: Slice){
-        self.flag = true;
     }
 
     get fun counter(): Int {
@@ -36,9 +30,5 @@ contract Counter with Deployable {
 
     get fun id(): Int {
         return self.id;
-    }
-
-    get fun flag(): Bool {
-        return self.flag;
     }
 }

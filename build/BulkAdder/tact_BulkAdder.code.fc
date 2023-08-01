@@ -1,0 +1,132 @@
+#pragma version =0.4.3;
+#pragma allow-post-modification;
+#pragma compute-asm-ltr;
+
+#include "tact_BulkAdder.headers.fc";
+#include "tact_BulkAdder.stdlib.fc";
+#include "tact_BulkAdder.constants.fc";
+#include "tact_BulkAdder.storage.fc";
+
+;;
+;; Contract BulkAdder functions
+;;
+
+(int) $BulkAdder$_contract_init() impure inline_ref {
+    var (($self'target)) = (null());
+    $self'target = 0;
+    return ($self'target);
+}
+
+;;
+;; Receivers of a Contract BulkAdder
+;;
+
+(((int)), ()) $BulkAdder$_internal_binary_Reach((int) $self, (slice, int) $msg) impure inline {
+    var ($self'target) = $self;
+    var ($msg'counter, $msg'target) = $msg;
+    throw_unless(61684, ($msg'target <= 10));
+    $self'target = $msg'target;
+    $global_send($SendParameters$_constructor_to_value_mode_body($msg'counter, 0, (64 + 2), __gen_cell_comment_16678fa1858bdf8e1aad796f4c9d0b5712fc09179ff87801e763a4dd4adcf710()));
+    return (($self'target), ());
+}
+
+(((int)), ()) $BulkAdder$_internal_binary_CounterValue((int) $self, (int) $msg) impure inline {
+    var ($self'target) = $self;
+    var ($msg'amount) = $msg;
+    if (($self'target > $msg'amount)) {
+        $global_send($SendParameters$_constructor_to_value_mode_body(__tact_context_get_sender(), 0, (64 + 2), __gen_cell_comment_c4f8d72312edfdef5b7bec7833bdbb162d1511bd78a912aed0f2637af65572ae()));
+    }
+    return (($self'target), ());
+}
+
+(((int)), ()) $BulkAdder$_internal_binary_Deploy((int) $self, (int) $deploy) impure inline {
+    var ($self'target) = $self;
+    var ($deploy'queryId) = $deploy;
+    ($self'target)~$BulkAdder$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId)));
+    return (($self'target), ());
+}
+
+;;
+;; Get methods of a Contract BulkAdder
+;;
+
+_ supported_interfaces() method_id {
+    return (
+        "org.ton.introspection.v0"H >> 128,
+        "org.ton.abi.ipfs.v0"H >> 128,
+        "org.ton.deploy.lazy.v0"H >> 128,
+        "org.ton.chain.workchain.v0"H >> 128
+    );
+}
+
+_ get_abi_ipfs() method_id {
+    return "ipfs://QmaZtWWgcz9JUfAgQRvKaic1utojeEZjGYNFEtUCBRduvA";
+}
+
+_ lazy_deployment_completed() method_id {
+    return get_data().begin_parse().load_int(1);
+}
+
+;;
+;; Routing of a Contract BulkAdder
+;;
+
+((int), int) $BulkAdder$_contract_router_internal((int) self, int msg_bounced, slice in_msg) impure inline_ref {
+    ;; Handle bounced messages
+    if (msg_bounced) {
+        return (self, true);
+    }
+    
+    ;; Parse incoming message
+    int op = 0;
+    if (slice_bits(in_msg) >= 32) {
+        op = in_msg.preload_uint(32);
+    }
+    
+    
+    ;; Receive Reach message
+    if (op == 2577471031) {
+        var msg = in_msg~$Reach$_load();
+        self~$BulkAdder$_internal_binary_Reach(msg);
+        return (self, true);
+    }
+    
+    ;; Receive CounterValue message
+    if (op == 454560690) {
+        var msg = in_msg~$CounterValue$_load();
+        self~$BulkAdder$_internal_binary_CounterValue(msg);
+        return (self, true);
+    }
+    
+    ;; Receive Deploy message
+    if (op == 2490013878) {
+        var msg = in_msg~$Deploy$_load();
+        self~$BulkAdder$_internal_binary_Deploy(msg);
+        return (self, true);
+    }
+    
+    return (self, false);
+}
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+    
+    ;; Context
+    var cs = in_msg_cell.begin_parse();
+    var msg_flags = cs~load_uint(4);
+    var msg_bounced = -(msg_flags & 1);
+    slice msg_sender_addr = __tact_verify_address(cs~load_msg_addr());
+    __tact_context = (msg_bounced, msg_sender_addr, msg_value, cs);
+    __tact_context_sender = msg_sender_addr;
+    
+    ;; Load contract data
+    var self = $BulkAdder$_contract_load();
+    
+    ;; Handle operation
+    int handled = self~$BulkAdder$_contract_router_internal(msg_bounced, in_msg);
+    
+    ;; Throw if not handled
+    throw_unless(130, handled);
+    
+    ;; Persist state
+    $BulkAdder$_contract_store(self);
+}

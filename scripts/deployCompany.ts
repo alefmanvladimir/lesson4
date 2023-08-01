@@ -1,11 +1,11 @@
 import { toNano } from 'ton-core';
-import { BuilkAdder } from '../wrappers/BuilkAdder';
+import { Company } from '../wrappers/Company';
 import { NetworkProvider } from '@ton-community/blueprint';
 
 export async function run(provider: NetworkProvider) {
-    const builkAdder = provider.open(await BuilkAdder.fromInit());
+    const company = provider.open(await Company.fromInit());
 
-    await builkAdder.send(
+    await company.send(
         provider.sender(),
         {
             value: toNano('0.05'),
@@ -16,7 +16,7 @@ export async function run(provider: NetworkProvider) {
         }
     );
 
-    await provider.waitForDeploy(builkAdder.address);
+    await provider.waitForDeploy(company.address);
 
-    // run methods on `builkAdder`
+    // run methods on `company`
 }

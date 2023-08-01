@@ -1,0 +1,5 @@
+;; Comment "query"
+cell __gen_cell_comment_16678fa1858bdf8e1aad796f4c9d0b5712fc09179ff87801e763a4dd4adcf710() asm "B{b5ee9c7241010101000b0000120000000071756572797e56ab82} B>boc PUSHREF";
+
+;; Comment "increment"
+cell __gen_cell_comment_c4f8d72312edfdef5b7bec7833bdbb162d1511bd78a912aed0f2637af65572ae() asm "B{b5ee9c7241010101000f00001a00000000696e6372656d656e74469bd0ea} B>boc PUSHREF";

@@ -1,0 +1,176 @@
+#pragma version =0.4.3;
+#pragma allow-post-modification;
+#pragma compute-asm-ltr;
+
+#include "tact_Fund.headers.fc";
+#include "tact_Fund.stdlib.fc";
+#include "tact_Fund.storage.fc";
+
+;;
+;; Contract Fund functions
+;;
+
+(int) $Fund$_contract_init() impure inline_ref {
+    var (($self'balance)) = (null());
+    $self'balance = 10;
+    return ($self'balance);
+}
+
+((int), int) $Fund$_fun_balance((int) $self) impure inline_ref {
+    var (($self'balance)) = $self;
+    return (($self'balance), $self'balance);
+}
+
+;;
+;; Receivers of a Contract Fund
+;;
+
+(((int)), ()) %$Fund$_internal_empty((int) $self) impure inline {
+    var ($self'balance) = $self;
+    throw(111);
+    return (($self'balance), ());
+}
+
+(((int)), ()) $Fund$_internal_binary_Deposit((int) $self, (int) $msg) impure inline {
+    var ($self'balance) = $self;
+    var ($msg'amount) = $msg;
+    $self'balance = ($self'balance + $msg'amount);
+    return (($self'balance), ());
+}
+
+(((int)), ()) $Fund$_internal_binary_Withdraw((int) $self, (int, slice) $msg) impure inline {
+    var ($self'balance) = $self;
+    var ($msg'amount, $msg'target) = $msg;
+    throw_unless(62492, ($self'balance >= $msg'amount));
+    $self'balance = ($self'balance - $msg'amount);
+    $global_send($SendParameters$_constructor_to_value_mode_body($msg'target, 0, (64 + 2), $Deposit$_store_cell($Deposit$_constructor_amount($msg'amount))));
+    return (($self'balance), ());
+}
+
+(((int)), ()) $Fund$_receive_binary_bounce_Deposit((int) $self, (int) $src) impure inline {
+    var ($self'balance) = $self;
+    var ($src'amount) = $src;
+    $self'balance = ($self'balance + $src'amount);
+    return (($self'balance), ());
+}
+
+(((int)), ()) $Fund$_internal_binary_Deploy((int) $self, (int) $deploy) impure inline {
+    var ($self'balance) = $self;
+    var ($deploy'queryId) = $deploy;
+    ($self'balance)~$Fund$_fun_notify($DeployOk$_store_cell($DeployOk$_constructor_queryId($deploy'queryId)));
+    return (($self'balance), ());
+}
+
+;;
+;; Get methods of a Contract Fund
+;;
+
+_ %balance() method_id(104128) {
+    var self = $Fund$_contract_load();
+    var res = self~$Fund$_fun_balance();
+    return res;
+}
+
+_ supported_interfaces() method_id {
+    return (
+        "org.ton.introspection.v0"H >> 128,
+        "org.ton.abi.ipfs.v0"H >> 128,
+        "org.ton.deploy.lazy.v0"H >> 128,
+        "org.ton.chain.workchain.v0"H >> 128
+    );
+}
+
+_ get_abi_ipfs() method_id {
+    return "ipfs://QmehwzCHwc6XQhHCVtxCDZemxseH3DmpfS7PAqxgS4cdW7";
+}
+
+_ lazy_deployment_completed() method_id {
+    return get_data().begin_parse().load_int(1);
+}
+
+;;
+;; Routing of a Contract Fund
+;;
+
+((int), int) $Fund$_contract_router_internal((int) self, int msg_bounced, slice in_msg) impure inline_ref {
+    ;; Handle bounced messages
+    if (msg_bounced) {
+        
+        ;; Skip 0xFFFFFFFF
+        in_msg~skip_bits(32);
+        
+        ;; Parse op
+        int op = 0;
+        if (slice_bits(in_msg) >= 32) {
+            op = in_msg.preload_uint(32);
+        }
+        
+        ;; Bounced handler for Deposit message
+        if (op == 4059071194) {
+            var msg = in_msg~$Deposit$_load();
+            self~$Fund$_receive_binary_bounce_Deposit(msg);
+            return (self, true);
+        }
+        
+        return (self, true);
+    }
+    
+    ;; Parse incoming message
+    int op = 0;
+    if (slice_bits(in_msg) >= 32) {
+        op = in_msg.preload_uint(32);
+    }
+    
+    
+    ;; Receive empty message
+    if ((op == 0) & (slice_bits(in_msg) <= 32)) {
+        self~%$Fund$_internal_empty();
+        return (self, true);
+    }
+    
+    ;; Receive Deposit message
+    if (op == 4059071194) {
+        var msg = in_msg~$Deposit$_load();
+        self~$Fund$_internal_binary_Deposit(msg);
+        return (self, true);
+    }
+    
+    ;; Receive Withdraw message
+    if (op == 728460677) {
+        var msg = in_msg~$Withdraw$_load();
+        self~$Fund$_internal_binary_Withdraw(msg);
+        return (self, true);
+    }
+    
+    ;; Receive Deploy message
+    if (op == 2490013878) {
+        var msg = in_msg~$Deploy$_load();
+        self~$Fund$_internal_binary_Deploy(msg);
+        return (self, true);
+    }
+    
+    return (self, false);
+}
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+    
+    ;; Context
+    var cs = in_msg_cell.begin_parse();
+    var msg_flags = cs~load_uint(4);
+    var msg_bounced = -(msg_flags & 1);
+    slice msg_sender_addr = __tact_verify_address(cs~load_msg_addr());
+    __tact_context = (msg_bounced, msg_sender_addr, msg_value, cs);
+    __tact_context_sender = msg_sender_addr;
+    
+    ;; Load contract data
+    var self = $Fund$_contract_load();
+    
+    ;; Handle operation
+    int handled = self~$Fund$_contract_router_internal(msg_bounced, in_msg);
+    
+    ;; Throw if not handled
+    throw_unless(130, handled);
+    
+    ;; Persist state
+    $Fund$_contract_store(self);
+}
